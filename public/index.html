@@ -2,19 +2,19 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>조 관리 (CRUD)</title>
+  <title>팀 관리 (CRUD)</title>
 </head>
 <body>
-  <h2>조 관리</h2>
-  <label>조 이름: <input type="text" id="groupName"></label>
-  <label>조원: <input type="text" id="members"></label>
-  <button onclick="addGroup()">추가</button>
+  <h2>팀 관리</h2>
+  <label>팀 이름: <input type="text" id="teamName"></label>
+  <label>팀원: <input type="text" id="members"></label>
+  <button onclick="addTeam()">추가</button>
 
-  <table border="1" id="groupTable">
+  <table border="1" id="teamTable">
     <thead>
       <tr>
-        <th>조 이름</th>
-        <th>조원</th>
+        <th>팀 이름</th>
+        <th>팀원</th>
         <th>수정</th>
         <th>삭제</th>
       </tr>
@@ -23,52 +23,52 @@
   </table>
 
   <script>
-    async function loadGroups() {
-      const res = await fetch("/groups");
-      const groups = await res.json();
-      const tbody = document.querySelector("#groupTable tbody");
+    async function loadTeams() {
+      const res = await fetch("/teams");
+      const teams = await res.json();
+      const tbody = document.querySelector("#teamTable tbody");
       tbody.innerHTML = "";
-      groups.forEach((g, i) => {
+      teams.forEach((t, i) => {
         const row = `<tr>
-          <td>${g.name}</td>
-          <td>${g.members}</td>
-          <td><button onclick="editGroup(${i})">수정</button></td>
-          <td><button onclick="deleteGroup(${i})">삭제</button></td>
+          <td>${t.name}</td>
+          <td>${t.members}</td>
+          <td><button onclick="editTeam(${t.id})">수정</button></td>
+          <td><button onclick="deleteTeam(${t.id})">삭제</button></td>
         </tr>`;
         tbody.innerHTML += row;
       });
     }
 
-    async function addGroup() {
-      const name = document.getElementById("groupName").value;
+    async function addTeam() {
+      const name = document.getElementById("teamName").value;
       const members = document.getElementById("members").value;
-      await fetch("/groups", {
+      await fetch("/teams", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, members })
       });
-      loadGroups();
+      loadTeams();
     }
 
-    async function editGroup(index) {
-      const newName = prompt("새로운 조 이름:");
-      const newMembers = prompt("새로운 조원:");
+    async function editTeam(id) {
+      const newName = prompt("새로운 팀 이름:");
+      const newMembers = prompt("새로운 팀원:");
       if (newName && newMembers) {
-        await fetch(`/groups/${index}`, {
+        await fetch(`/teams/${id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name: newName, members: newMembers })
         });
-        loadGroups();
+        loadTeams();
       }
     }
 
-    async function deleteGroup(index) {
-      await fetch(`/groups/${index}`, { method: "DELETE" });
-      loadGroups();
+    async function deleteTeam(id) {
+      await fetch(`/teams/${id}`, { method: "DELETE" });
+      loadTeams();
     }
 
-    loadGroups();
+    loadTeams();
   </script>
 </body>
 </html>

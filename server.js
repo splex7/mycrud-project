@@ -1,62 +1,121 @@
+require('dotenv').config();
 const express = require("express");
-const fs = require("fs");
+const mysql = require('mysql2/promise');
 const path = require("path");
 
 const app = express();
 const PORT = 3000;
-const DATA_FILE = path.join(__dirname, "data.json");
 
 app.use(express.json());
 app.use(express.static("public"));
 
-// JSON 파일 읽기
-function readData() {
-  if (!fs.existsSync(DATA_FILE)) return [];
-  const data = fs.readFileSync(DATA_FILE);
-  return JSON.parse(data);
+// MySQL database connection
+const db = require('./config/db');
+
+// Read all teams from database
+async function readData() {
+  try {
+    const [rows] = await db.execute('SELECT id, name, members FROM teams ORDER BY id');
+    return rows;
+  } catch (error) {
+    console.error('Error reading data from database:', error);
+    throw error;
+  }
 }
 
-// JSON 파일 쓰기
-function writeData(data) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
-}
+// Write data to database - this will be handled by specific functions for create, update, delete
+// MySQL operations will be handled directly in the route handlers
 
-// 모든 그룹 조회
-app.get("/groups", (req, res) => {
-  res.json(readData());
-});
-
-// 그룹 추가
-app.post("/groups", (req, res) => {
-  const groups = readData();
-  groups.push(req.body);
-  writeData(groups);
-  res.json({ message: "추가 완료", data: groups });
-});
-
-// 그룹 수정
-app.put("/groups/:index", (req, res) => {
-  const groups = readData();
-  const idx = parseInt(req.params.index);
-  if (groups[idx]) {
-    groups[idx] = req.body;
-    writeData(groups);
-    res.json({ message: "수정 완료", data: groups });
-  } else {
-    res.status(404).json({ message: "해당 그룹 없음" });
+// 모든 팀 조회
+app.get("/teams", async (req, res) => {
+  try {
+    const teams = await readData();
+    res.json(teams);
+  } catch (error) {
+    console.error('Error in GET /teams:', error);
+    res.status(500).json({ message: "서버 오류 발생" });
   }
 });
 
-// 그룹 삭제
-app.delete("/groups/:index", (req, res) => {
-  const groups = readData();
-  const idx = parseInt(req.params.index);
-  if (groups[idx]) {
-    groups.splice(idx, 1);
-    writeData(groups);
-    res.json({ message: "삭제 완료", data: groups });
-  } else {
-    res.status(404).json({ message: "해당 그룹 없음" });
+// 팀 추가
+app.post("/teams", async (req, res) => {
+  try {
+    const { name, members } = req.body;
+    const [result] = await db.execute(
+      'INSERT INTO teams (name, members) VALUES (?, ?)',
+      [name, members]
+    );
+    
+    // Return the newly created team
+    const newTeam = {
+      id: result.insertId,
+      name,
+      members
+    };
+    
+    const allTeams = await readData();
+    res.json({ message: "추가 완료", data: allTeams, newTeam });
+  } catch (error) {
+    console.error('Error in POST /teams:', error);
+    res.status(500).json({ message: "서버 오류 발생" });
+  }
+});
+
+// 팀 수정 (ID 기반)
+app.put("/teams/:id", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { name, members } = req.body;
+
+    // Check if team exists
+    const [existing] = await db.execute(
+      'SELECT id FROM teams WHERE id = ?',
+      [id]
+    );
+
+    if (existing.length === 0) {
+      res.status(404).json({ message: "해당 팀 없음" });
+      return;
+    }
+
+    // Update the team
+    await db.execute(
+      'UPDATE teams SET name = ?, members = ? WHERE id = ?',
+      [name, members, id]
+    );
+
+    const allTeams = await readData();
+    res.json({ message: "수정 완료", data: allTeams });
+  } catch (error) {
+    console.error('Error in PUT /teams/:id:', error);
+    res.status(500).json({ message: "서버 오류 발생" });
+  }
+});
+
+// 팀 삭제 (ID 기반)
+app.delete("/teams/:id", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+
+    // Check if team exists
+    const [existing] = await db.execute(
+      'SELECT id FROM teams WHERE id = ?',
+      [id]
+    );
+
+    if (existing.length === 0) {
+      res.status(404).json({ message: "해당 팀 없음" });
+      return;
+    }
+
+    // Delete the team
+    await db.execute('DELETE FROM teams WHERE id = ?', [id]);
+
+    const allTeams = await readData();
+    res.json({ message: "삭제 완료", data: allTeams });
+  } catch (error) {
+    console.error('Error in DELETE /teams/:id:', error);
+    res.status(500).json({ message: "서버 오류 발생" });
   }
 });
 
