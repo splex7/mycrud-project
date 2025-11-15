@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>조 관리 (CRUD)</title>
+</head>
+<body>
+  <h2>조 관리</h2>
+  <label>조 이름: <input type="text" id="groupName"></label>
+  <label>조원: <input type="text" id="members"></label>
+  <button onclick="addGroup()">추가</button>
+
+  <table border="1" id="groupTable">
+    <thead>
+      <tr>
+        <th>조 이름</th>
+        <th>조원</th>
+        <th>수정</th>
+        <th>삭제</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    async function loadGroups() {
+      const res = await fetch("/groups");
+      const groups = await res.json();
+      const tbody = document.querySelector("#groupTable tbody");
+      tbody.innerHTML = "";
+      groups.forEach((g, i) => {
+        const row = `<tr>
+          <td>${g.name}</td>
+          <td>${g.members}</td>
+          <td><button onclick="editGroup(${i})">수정</button></td>
+          <td><button onclick="deleteGroup(${i})">삭제</button></td>
+        </tr>`;
+        tbody.innerHTML += row;
+      });
+    }
+
+    async function addGroup() {
+      const name = document.getElementById("groupName").value;
+      const members = document.getElementById("members").value;
+      await fetch("/groups", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, members })
+      });
+      loadGroups();
+    }
+
+    async function editGroup(index) {
+      const newName = prompt("새로운 조 이름:");
+      const newMembers = prompt("새로운 조원:");
+      if (newName && newMembers) {
+        await fetch(`/groups/${index}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: newName, members: newMembers })
+        });
+        loadGroups();
+      }
+    }
+
+    async function deleteGroup(index) {
+      await fetch(`/groups/${index}`, { method: "DELETE" });
+      loadGroups();
+    }
+
+    loadGroups();
+  </script>
+</body>
+</html>
+
