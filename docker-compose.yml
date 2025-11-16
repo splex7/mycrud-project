@@ -1,0 +1,38 @@
+version: "3.9"
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: mycrud-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root1234}
+      MYSQL_DATABASE: ${DB_NAME:-crud_app}
+      MYSQL_USER: ${DB_USER:-cruduser}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-crudpass}
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: .
+    container_name: mycrud-app
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      DB_HOST: db
+      DB_USER: ${DB_USER:-cruduser}
+      DB_PASSWORD: ${DB_PASSWORD:-crudpass}
+      DB_NAME: ${DB_NAME:-crud_app}
+      DB_PORT: ${DB_PORT:-3306}
+    depends_on:
+      db:
+        condition: service_healthy
+    command: sh -c "node migrate.js && node server.js"

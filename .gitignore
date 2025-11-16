@@ -2,6 +2,7 @@
 .env
 .env.local
 .env.*.local
+.env.docker
 
 # 로그 파일
 *.log
@@ -31,3 +32,7 @@ coverage/
 
 # 기타
 *.swp
+
+# 데이터베이스 
+mysql-data
+mysql-data/*

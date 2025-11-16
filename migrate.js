@@ -42,6 +42,19 @@ function getInsertQuery(data) {
   return `INSERT IGNORE INTO \`${tableName}\` (name, members) VALUES ${values};`;
 }
 
+// Function to check if table has any records
+function checkIfTableHasData(callback) {
+  connection.query(`SELECT COUNT(*) as count FROM \`${dbName}\`.\`${tableName}\``, (err, result) => {
+    if (err) {
+      console.error('Error checking if table has data:', err);
+      callback(false);
+      return;
+    }
+    const hasData = result[0].count > 0;
+    callback(hasData);
+  });
+}
+
 try {
   console.log(`Creating database: ${dbName}`);
   connection.query(createDbQuery, (err, result) => {
@@ -62,24 +75,33 @@ try {
       // Check if we should import data from data.json
       const dataFilePath = path.join(__dirname, 'data.json');
       if (fs.existsSync(dataFilePath)) {
-        console.log('Importing data from data.json...');
-        const jsonData = JSON.parse(fs.readFileSync(dataFilePath, 'utf8'));
-        
-        if (jsonData.length > 0) {
-          const insertQuery = getInsertQuery(jsonData);
-          connection.query(insertQuery, (err, result) => {
-            if (err) {
-              console.error('Error inserting initial data:', err);
-            } else {
-              console.log(`Imported ${jsonData.length} records from data.json`);
-            }
+        console.log('Checking if table already has data...');
+        checkIfTableHasData((hasData) => {
+          if (hasData) {
+            console.log('Table already has data. Skipping import from data.json.');
             connection.end();
             console.log('Migration completed successfully!');
-          });
-        } else {
-          connection.end();
-          console.log('Migration completed successfully!');
-        }
+          } else {
+            console.log('Table is empty. Importing data from data.json...');
+            const jsonData = JSON.parse(fs.readFileSync(dataFilePath, 'utf8'));
+
+            if (jsonData.length > 0) {
+              const insertQuery = getInsertQuery(jsonData);
+              connection.query(insertQuery, (err, result) => {
+                if (err) {
+                  console.error('Error inserting initial data:', err);
+                } else {
+                  console.log(`Imported ${jsonData.length} records from data.json`);
+                }
+                connection.end();
+                console.log('Migration completed successfully!');
+              });
+            } else {
+              connection.end();
+              console.log('Migration completed successfully!');
+            }
+          }
+        });
       } else {
         connection.end();
         console.log('Migration completed successfully!');
